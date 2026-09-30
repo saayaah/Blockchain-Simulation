@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#080b10">
+  <title>Blockchain Simulation · Control Center</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="shell">
+  <header class="topbar">
+    <div>
+      <span class="eyebrow">BLOCKCHAIN SIMULATION</span>
+      <h1>Network Control Center</h1>
+      <p class="subtitle">Create multiple browser-controlled peers · Room discovery · P2P · Proof of Stake · Blockchain validation</p>
+    </div>
+    <div class="status-wrap"><span id="statusDot" class="status-dot"></span><span id="status" class="pill">stopped</span></div>
+  </header>
+
+  <section class="panel node-manager">
+    <div class="section-heading compact">
+      <div><span class="section-kicker">NODE MANAGER</span><h2>Network Nodes</h2></div>
+      <button class="primary small-button" onclick="toggleSetup()">+ Create / Join Node</button>
+    </div>
+    <div class="node-manager-row">
+      <label class="active-select">Active node
+        <select id="activeNode" onchange="selectNode(this.value)"></select>
+      </label>
+      <div id="nodeCards" class="node-cards"></div>
+    </div>
+    <div id="nodeManagerMessage" class="result"></div>
+  </section>
+
+  <section id="setup" class="panel setup-panel hidden">
+    <div class="section-heading">
+      <div><span class="section-kicker">CREATE / JOIN NODE</span><h2>Launch another peer from the browser</h2></div>
+      <span class="badge">MULTI-PROCESS P2P</span>
+    </div>
+    <p class="help">Every browser-created node runs in its own Python process. Use the same room and signalling URL, but give each node a unique P2P port and name. For a same-PC demo use 127.0.0.1; for LAN testing use the host computer's reachable IPv4 address.</p>
+    <div class="grid">
+      <label>Node name<input id="name" placeholder="webnode" autocomplete="off"></label>
+      <label>P2P bind host<input id="host" value="127.0.0.1" placeholder="127.0.0.1 or LAN IP"></label>
+      <label>P2P port<input id="p2p" type="number" value="5003" min="1" max="65535"></label>
+      <label>Room ID<input id="room" value="demo-room" placeholder="demo-room"></label>
+      <label>Signalling URL<input id="signal" value="ws://127.0.0.1:8765"></label>
+      <label>Consensus<select id="consensus"><option value="pos">Proof of Stake (PoS)</option><option value="pow">Proof of Work (PoW)</option><option value="poa">Proof of Authority (PoA)</option></select></label>
+      <label>Load saved data<select id="load"><option value="0">No</option><option value="1">Yes</option></select></label>
+    </div>
+    <div class="checks">
+      <label><input id="staker" type="checkbox" checked> PoS staker</label>
+      <label><input id="malicious" type="checkbox"> Malicious simulation</label>
+      <label><input id="save" type="checkbox"> Persist data</label>
+    </div>
+    <div class="setup-actions">
+      <button class="primary" onclick="startNode()">Start / Join Network</button>
+      <button class="secondary" onclick="toggleSetup(false)">Cancel</button>
+    </div>
+    <div id="setupError" class="error"></div>
+  </section>
+
+  <main id="dashboard" class="hidden">
+    <section class="stats">
+      <div><small>NODE</small><strong id="nodeName">—</strong></div>
+      <div><small>BALANCE</small><strong id="balance">—</strong></div>
+      <div><small>BLOCKS</small><strong id="height">0</strong></div>
+      <div><small>PEERS</small><strong id="peersCount">0</strong></div>
+      <div><small>STAKE</small><strong id="stakeValue">0</strong></div>
+    </section>
+
+    <section class="info-strip">
+      <div><span>ROOM</span><strong id="roomValue">—</strong></div>
+      <div><span>CONSENSUS</span><strong id="consensusValue">—</strong></div>
+      <div><span>NODE MODE</span><strong id="modeValue">—</strong></div>
+      <div><span>CHAIN SYNC</span><strong id="syncValue">—</strong></div>
+    </section>
+
+    <section class="flow panel">
+      <div class="section-heading compact"><div><span class="section-kicker">HOW THE SIMULATION WORKS</span><h2>Live Blockchain Flow</h2></div></div>
+      <div class="flow-steps">
+        <div><b>1</b><span>Discover peers</span></div><i>→</i>
+        <div><b>2</b><span>Broadcast transaction</span></div><i>→</i>
+        <div><b>3</b><span>PoS stake + VRF</span></div><i>→</i>
+        <div><b>4</b><span>Create block</span></div><i>→</i>
+        <div><b>5</b><span>Validate + sync</span></div>
+      </div>
+      <p class="help">The cards below show the real state produced by the Python peer running for the selected node.</p>
+    </section>
+
+    <section class="columns">
+      <div class="panel">
+        <div class="section-heading compact"><div><span class="section-kicker">TRANSACTION</span><h2>Broadcast Transaction</h2></div></div>
+        <label>Receiver name or public key<input id="receiver" placeholder="bob"></label>
+        <label>Amount<input id="amount" type="number" min="0.001" step="0.001" placeholder="10"></label>
+        <button class="primary" onclick="sendTx()">Broadcast Transaction</button>
+        <div id="txResult" class="result"></div>
+      </div>
+
+      <div class="panel">
+        <div class="section-heading compact"><div><span class="section-kicker">PROOF OF STAKE</span><h2>Stake</h2></div></div>
+        <label>Amount to stake<input id="stakeAmount" type="number" min="1" step="1" placeholder="10"></label>
+        <button class="primary" onclick="stake()">Announce Stake</button>
+        <div id="stakeResult" class="result"></div>
+      </div>
+    </section>
+
+    <section class="panel propagation-panel">
+      <div class="section-heading compact"><div><span class="section-kicker">LIVE P2P DELIVERY</span><h2>Transaction Propagation</h2></div><span id="propagationBadge" class="badge">Waiting</span></div>
+      <div id="propagationTx" class="propagation-tx muted">Send a transaction to see its live network path.</div>
+      <div class="propagation-steps">
+        <div id="propStep1" class="prop-step"><b>1 · Broadcast</b><span>Transaction sent into the P2P network</span></div>
+        <div id="propStep2" class="prop-step"><b>2 · Peer received</b><span>Transaction appears in the peer mempool</span></div>
+        <div id="propStep3" class="prop-step"><b>3 · Block confirmed</b><span>Waiting for the PoS block creation attempt</span></div>
+      </div>
+    </section>
+
+    <section class="columns">
+      <div class="panel">
+        <div class="section-heading compact"><div><span class="section-kicker">NETWORK</span><h2>Known Peers</h2></div><span id="peerBadge" class="badge">0 peers</span></div>
+        <div id="peerList"></div>
+      </div>
+      <div class="panel">
+        <div class="section-heading compact"><div><span class="section-kicker">MEMPOOL</span><h2>Pending Transactions</h2></div><span id="mempoolBadge" class="badge">0 pending</span></div>
+        <div id="mempool"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="section-heading compact"><div><span class="section-kicker">PROOF OF STAKE</span><h2>Current Stakers</h2></div><span id="stakerBadge" class="badge">0 stakers</span></div>
+      <div id="currentStakers" class="staker-grid"></div>
+    </section>
+
+    <section class="panel">
+      <div class="section-heading"><div><span class="section-kicker">LEDGER</span><h2>Blockchain Explorer</h2></div><span id="chainBadge" class="badge">0 blocks</span></div>
+      <div id="chain"></div>
+    </section>
+
+    <section class="panel">
+      <div class="section-heading compact"><div><span class="section-kicker">BACKEND</span><h2>Live Activity</h2></div><span class="live-label">LIVE</span></div>
+      <div id="activity" class="activity"></div>
+    </section>
+
+    <section class="panel warning-panel">
+      <b>Multi-node demo</b>
+      <p>Each node has its own process and wallet. Give every node a unique name and P2P port. Nodes in the same room discover each other through the signalling server and then communicate directly over P2P.</p>
+    </section>
+
+    <button class="danger" onclick="stopNode()">Stop Selected Node</button>
+  </main>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>

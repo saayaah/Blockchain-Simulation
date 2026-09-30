@@ -1,0 +1,19 @@
+ipfs/retreived
+
+# Virtual environments
+venv/
+myenv/
+newEnv/
+
+# Python cache and bytecode files
+__pycache__/
+*.pyc
+
+# Temporary files
+haha.txt
+todo.md
+
+# Storage folders
+storage/poa/
+storage/pos/
+storage/pow/
